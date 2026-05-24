@@ -71,6 +71,24 @@ Worker defaults:
 streamlit run ui.py
 ```
 
+### 5. Launch everything with one command on Windows
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
+.\deploy.ps1
+```
+
+This opens separate windows for:
+- `master.py`
+- `worker.py`
+- `ui.py`
+
+If port `9001` is busy, use a different worker port:
+
+```powershell
+.\deploy.ps1 -WorkerPort 9002
+```
+
 ---
 
 ## Main Endpoints
