@@ -1,166 +1,146 @@
-# Simple Python Worker (FastAPI)
+# Local AI Freetime
 
-This project is a **beginner-friendly worker node** for your distributed AI platform.
+Simple distributed AI platform built with Python and FastAPI.
 
-It does exactly what you requested:
-1. Registers itself to the master node.
-2. Sends heartbeat every 30 seconds.
-3. Receives tasks from the master (pull + optional push).
-4. Executes tasks.
-5. Returns results.
+It includes:
+- a master API for workers and task management
+- a worker node that registers, sends heartbeats, pulls tasks, executes them, and returns results
+- a Streamlit UI for submitting tasks and monitoring the system
 
 ---
 
-## 1) Install dependencies
+## Project Layout
+
+```text
+.
+├── LICENSE
+├── MIGRATION.md
+├── README.md
+├── master.py
+├── requirements.txt
+├── ui.py
+└── worker.py
+```
+
+---
+
+## What Each File Does
+
+- `master.py` - FastAPI master node with worker registration, heartbeat, task queue, and result collection
+- `worker.py` - FastAPI worker node with polling, execution, and Ollama integration
+- `ui.py` - Streamlit dashboard for submitting tasks and viewing system status
+- `requirements.txt` - Python dependencies for the project
+- `MIGRATION.md` - step-by-step migration guide for moving this project to another machine
+- `LICENSE` - MIT license
+
+---
+
+## Quick Start
+
+### 1. Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
----
-
-## 2) Run the master
-
-Start master first:
+### 2. Start the master
 
 ```bash
 python master.py
 ```
 
-Master API runs on:
+Master API default:
 
-`http://0.0.0.0:8000`
+- `http://0.0.0.0:8000`
 
----
-
-## 3) Run the worker
-
-Default master URL is already set to:
-
-`http://192.168.1.249:8000`
-
-Start worker:
+### 3. Start the worker
 
 ```bash
 python worker.py
 ```
 
-Worker FastAPI server starts on:
+Worker defaults:
 
-`http://0.0.0.0:9000`
+- `MASTER_URL=http://192.168.1.249:8000`
+- `WORKER_HOST=0.0.0.0`
+- `WORKER_PORT=9000`
 
-Health endpoint:
+### 4. Start the UI
 
-`GET /health`
-
----
-
-## 4) Environment variables (optional)
-
-You can override defaults:
-
-- `MASTER_URL` (default: `http://192.168.1.249:8000`)
-- `WORKER_ID` (default: auto-generated)
-- `WORKER_HOST` (default: `0.0.0.0`)
-- `WORKER_PORT` (default: `9000`)
-
-Example (PowerShell):
-
-```powershell
-$env:MASTER_URL="http://192.168.1.249:8000"
-$env:WORKER_PORT="9000"
-python worker.py
+```bash
+streamlit run ui.py
 ```
 
 ---
 
-## 5) Master endpoints expected by worker
+## Main Endpoints
 
-The worker calls these endpoints on master:
+### Master
 
 - `POST /workers/register`
 - `POST /workers/heartbeat`
 - `GET /workers/{worker_id}/tasks/next`
 - `POST /tasks/{task_id}/result`
+- `POST /tasks/submit`
+- `GET /tasks`
+- `GET /tasks/{task_id}`
+- `GET /workers`
 
-If your master uses different paths, just update URL paths inside `worker.py`.
+### Worker
+
+- `GET /health`
+- `POST /tasks/execute`
 
 ---
 
-## 6) Task format
+## Task Format
 
-Worker expects task JSON like:
+Example task:
 
 ```json
 {
   "task_id": "task-123",
-  "task_type": "add",
+  "task_type": "generate_code",
   "payload": {
-    "numbers": [1, 2, 3]
+    "prompt": "Write a Python hello world",
+    "model": "qwen2.5-coder:1.5b",
+    "system_prompt": "You are a helpful Python coding assistant."
   }
 }
 ```
 
-Supported `task_type` in this starter worker:
+Supported task types in `worker.py`:
 
-- `echo` → returns `payload.text`
-- `add` → sums `payload.numbers`
-- `sleep` → sleeps `payload.seconds` (max 60)
-- `reverse_text` → reverses `payload.text`
-
----
-
-## 7) Optional push mode
-
-Master can send task directly to worker:
-
-- `POST /tasks/execute` on worker node
-
-Worker accepts task and processes in background.
+- `echo`
+- `add`
+- `sleep`
+- `reverse_text`
+- `generate_code`
 
 ---
 
-## 8) Files explanation
+## Ollama Setup
 
-### `master.py`
-Main master service.
+The worker uses local Ollama for `generate_code` tasks.
 
-Contains:
-- worker register endpoint (`/workers/register`)
-- worker heartbeat endpoint (`/workers/heartbeat`)
-- pull-task endpoint (`/workers/{worker_id}/tasks/next`)
-- task result endpoint (`/tasks/{task_id}/result`)
-- helper endpoints for testing (`/tasks/submit`, `/tasks`, `/workers`)
-- in-memory worker/task storage (simple starter design)
+Check installed models:
 
-### `worker.py`
-Main worker service.
+```powershell
+Invoke-RestMethod http://localhost:11434/api/tags | ConvertTo-Json -Depth 6
+```
 
-Contains:
-- FastAPI app
-- registration loop
-- heartbeat loop (30s)
-- task polling loop
-- task execution logic
-- result callback to master
-- health endpoint
-- push-task endpoint (`/tasks/execute`)
+Pull a model:
 
-### `requirements.txt`
-Python dependencies needed to run worker:
-- FastAPI for API server
-- Uvicorn for ASGI runtime
-- HTTPX for calling master API
-- Pydantic for request/response models
-
-### `README.md`
-Setup guide + architecture summary + endpoint contracts.
+```powershell
+ollama pull qwen2.5-coder:1.5b
+```
 
 ---
 
-## 9) Notes for beginners
+## Notes
 
-- Start simple with `echo` and `add` tasks first.
-- Check worker logs for register/heartbeat status.
-- Use `GET /health` to verify worker state.
-- Once stable, you can add more `task_type` cases in `execute_task_logic()`.
+- Keep `master.py` running before you start the worker.
+- If port `9000` is busy, set `WORKER_PORT` to another free port.
+- If `generate_code` returns an Ollama error, confirm the model is installed locally.
+
+For a full migration checklist, see `MIGRATION.md`.
